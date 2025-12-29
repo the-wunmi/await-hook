@@ -1,0 +1,70 @@
+{
+  "name": "await-hook",
+  "version": "0.1.0",
+  "description": "Suspend HTTP request execution until external events complete - no polling required",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "run": "tsx",
+    "lint": "eslint src --ext .ts",
+    "prepublishOnly": "pnpm run build"
+  },
+  "keywords": [
+    "webhook",
+    "async",
+    "suspend",
+    "resume",
+    "await",
+    "hook",
+    "promise",
+    "http",
+    "request",
+    "defer"
+  ],
+  "author": "Adewunmi Akinsanya <adewunmiakinsanya@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/the-wunmi/await-hook.git"
+  },
+  "homepage": "https://github.com/the-wunmi/await-hook#readme",
+  "bugs": {
+    "url": "https://github.com/the-wunmi/await-hook/issues"
+  },
+  "devDependencies": {
+    "@redis/client": "^5.10.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {
+    "redis": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "redis": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "packageManager": "pnpm@9.7.1+sha512.faf344af2d6ca65c4c5c8c2224ea77a81a5e8859cbc4e06b1511ddce2f0151512431dd19e6aff31f2c6a8f5f2aced9bd2273e1fed7dd4de1868984059d2c4247"
+}
