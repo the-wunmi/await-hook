@@ -2,6 +2,14 @@
 
 Await async operations that complete via external events like webhooks or queue callbacks.
 
+## Design
+
+This package is **not durable by design**. Hooks exist only within the current execution context and do not survive process restarts or deployments.
+
+It's meant for short-lived operations where you want to await an external event and return the result immediately, rather than responding with "pending" and requiring the client to poll.
+
+You should still implement proper webhook/queue handling for durability. This package just lets you wait for the result when you need it.
+
 ## Installation
 
 ```bash

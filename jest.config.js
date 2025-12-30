@@ -4,12 +4,16 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.ts'],
-  moduleFileExtensions: ['ts', 'js'],
-  collectCoverageFrom: ['src/**/*.ts'],
+  collectCoverageFrom: [
+    'src/**/*.ts'
+  ],
   coverageDirectory: 'coverage',
-  transform: {
-    '^.+\\.ts$': ['ts-jest', { useESM: false }],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
   },
 };
-
-
