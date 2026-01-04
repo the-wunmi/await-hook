@@ -17,6 +17,10 @@ export {
   RedisPubSubStorage,
   type RedisPubSubOptions,
 } from "./storage/redis-pubsub";
+export {
+  PostgresStorage,
+  type PostgresStorageOptions,
+} from "./storage/postgres";
 
 export type { Hook, SuspendOptions, ResumeOptions } from "./core/types";
 

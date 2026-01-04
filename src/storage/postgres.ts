@@ -2,10 +2,14 @@ import { StorageAdapter } from "./adapter";
 import { HookTimeoutError, HookCancelledError } from "../errors";
 import { isErrorPayload, extractError } from "../utils/error-payload";
 
-interface RedisClient {
-  subscribe(channel: string, callback: (message: string) => void): Promise<void>;
-  unsubscribe(channel: string): Promise<void>;
-  publish(channel: string, message: string): Promise<number>;
+interface PostgresClient {
+  query(sql: string, params?: unknown[]): Promise<unknown>;
+  on(
+    event: "notification",
+    callback: (msg: { channel: string; payload?: string }) => void
+  ): void;
+  release(err?: Error | boolean): void;
+  escapeIdentifier(identifier: string): string;
 }
 
 interface WaitingHook {
@@ -14,28 +18,27 @@ interface WaitingHook {
   expiresAt: number;
 }
 
-export interface RedisPubSubOptions {
-  getSubscriber: () => RedisClient | Promise<RedisClient>;
-  getPublisher: () => RedisClient | Promise<RedisClient>;
+export interface PostgresStorageOptions {
+  getClient: () => PostgresClient | Promise<PostgresClient>;
+  releaseClient?: (client: PostgresClient) => void | Promise<void>;
   channel?: string;
   cleanupIntervalMs?: number;
 }
 
-export class RedisPubSubStorage implements StorageAdapter {
+export class PostgresStorage implements StorageAdapter {
   private hooks = new Map<string, WaitingHook>();
-  private getSubscriber: () => RedisClient | Promise<RedisClient>;
-  private getPublisher: () => RedisClient | Promise<RedisClient>;
-  private publisher: RedisClient | null = null;
-  private subscriber: RedisClient | null = null;
+  private getClient: () => PostgresClient | Promise<PostgresClient>;
+  private releaseClient?: (client: PostgresClient) => void | Promise<void>;
+  private client!: PostgresClient;
   private channel: string;
   private ready: Promise<void>;
   private closed = false;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
-  constructor(options: RedisPubSubOptions) {
-    this.getSubscriber = options.getSubscriber;
-    this.getPublisher = options.getPublisher;
-    this.channel = options.channel ?? "hook:events";
+  constructor(options: PostgresStorageOptions) {
+    this.getClient = options.getClient;
+    this.releaseClient = options.releaseClient;
+    this.channel = options.channel ?? "hook_events";
     this.ready = this.initialize();
     this.startCleanupInterval(options.cleanupIntervalMs ?? 1000);
   }
@@ -58,17 +61,22 @@ export class RedisPubSubStorage implements StorageAdapter {
   }
 
   private async initialize(): Promise<void> {
-    this.subscriber = await this.getSubscriber();
-    this.publisher = await this.getPublisher();
+    this.client = await this.getClient();
 
-    await this.subscriber.subscribe(this.channel, (message: string) => {
-      this.handleMessage(message);
+    this.client.on("notification", (msg) => {
+      if (msg.channel === this.channel && msg.payload) {
+        this.handleMessage(msg.payload);
+      }
     });
+
+    await this.client.query(
+      `LISTEN ${this.client.escapeIdentifier(this.channel)}`
+    );
   }
 
-  private handleMessage(message: string): void {
+  private handleMessage(payload: string): void {
     try {
-      const { token, payload } = JSON.parse(message);
+      const { token, payload: data } = JSON.parse(payload);
       const hook = this.hooks.get(token);
 
       if (!hook) {
@@ -77,10 +85,10 @@ export class RedisPubSubStorage implements StorageAdapter {
 
       this.hooks.delete(token);
 
-      if (isErrorPayload(payload)) {
-        hook.reject(extractError(payload));
+      if (isErrorPayload(data)) {
+        hook.reject(extractError(data));
       } else {
-        hook.resolve(payload);
+        hook.resolve(data);
       }
     } catch {
       // Ignore malformed messages
@@ -111,7 +119,10 @@ export class RedisPubSubStorage implements StorageAdapter {
     await this.ready;
 
     const message = JSON.stringify({ token, payload });
-    await this.publisher!.publish(this.channel, message);
+    await this.client!.query(`SELECT pg_notify($1, $2)`, [
+      this.channel,
+      message,
+    ]);
   }
 
   async cancel(token: string): Promise<void> {
@@ -137,15 +148,15 @@ export class RedisPubSubStorage implements StorageAdapter {
 
     try {
       await this.ready;
-
-      if (this.subscriber) {
-        await this.subscriber.unsubscribe(this.channel);
-      }
+      await this.client.query(
+        `UNLISTEN ${this.client.escapeIdentifier(this.channel)}`
+      );
     } finally {
       for (const [, hook] of this.hooks.entries()) {
         hook.reject(new Error("Storage closed"));
       }
       this.hooks.clear();
+      await this.releaseClient?.(this.client);
     }
   }
 }

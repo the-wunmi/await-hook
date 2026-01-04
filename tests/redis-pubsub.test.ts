@@ -9,11 +9,13 @@ describe('RedisPubSubStorage', () => {
     subscribe: jest.fn().mockImplementation(async (_channel, callback) => {
       subscribeCallback = callback;
     }),
+    unsubscribe: jest.fn().mockResolvedValue(undefined),
     publish: jest.fn().mockResolvedValue(1),
   });
 
   const createMockPublisher = () => ({
     subscribe: jest.fn(),
+    unsubscribe: jest.fn().mockResolvedValue(undefined),
     publish: jest.fn().mockResolvedValue(1),
   });
 

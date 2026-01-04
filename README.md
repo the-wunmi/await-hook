@@ -131,6 +131,26 @@ setDefaultStorage(new RedisPubSubStorage({
 
 Subscriber and publisher must be separate connections - a Redis client in subscribe mode cannot publish.
 
+### PostgreSQL
+
+Uses LISTEN/NOTIFY. Single connection can both listen and notify.
+
+```typescript
+import { PostgresStorage, setDefaultStorage } from 'await-hook';
+import { Client } from 'pg';
+
+const client = new Client({ connectionString: 'postgres://localhost/mydb' });
+await client.connect();
+
+setDefaultStorage(new PostgresStorage({
+  getClient: () => client,
+  channel: 'hook_events',
+  cleanupIntervalMs: 1000,
+}));
+```
+
+Note: PostgreSQL NOTIFY payloads are limited to 8KB.
+
 ## Error Handling
 
 ```typescript
